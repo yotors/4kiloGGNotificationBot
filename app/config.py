@@ -5,13 +5,17 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
 TRANSLATIONS_PATH = os.path.join(BASE_DIR, 'translations.json')
 
-try:
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as config_file:
-        CONFIG = json.load(config_file)
-except FileNotFoundError as exc:
-    raise RuntimeError("config.json not found. Please add it next to bot.py.") from exc
-except json.JSONDecodeError as exc:
-    raise RuntimeError(f"config.json contains invalid JSON: {exc}") from exc
+def _load_config_file() -> dict:
+    try:
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as config_file:
+            return json.load(config_file)
+    except FileNotFoundError as exc:
+        raise RuntimeError("config.json not found. Please add it next to bot.py.") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"config.json contains invalid JSON: {exc}") from exc
+
+
+CONFIG = _load_config_file()
 
 
 def _clean_str_list(values):
@@ -22,30 +26,6 @@ def _clean_str_list(values):
             cleaned.append(text)
     return cleaned
 
-
-admin_config = CONFIG.get('admins')
-if not isinstance(admin_config, dict):
-    raise RuntimeError("config.json must include an 'admins' object.")
-
-MASTER_ADMINS: set[int] = set()
-for admin_id in admin_config.get('master', []) or []:
-    try:
-        MASTER_ADMINS.add(int(admin_id))
-    except (TypeError, ValueError):
-        continue
-
-YEAR_ADMINS: dict[int, set[int]] = {}
-for year_key, admin_ids in (admin_config.get('year', {}) or {}).items():
-    try:
-        numeric_year = int(year_key)
-    except (TypeError, ValueError):
-        continue
-    YEAR_ADMINS[numeric_year] = set()
-    for admin_id in admin_ids or []:
-        try:
-            YEAR_ADMINS[numeric_year].add(int(admin_id))
-        except (TypeError, ValueError):
-            continue
 
 options_config = CONFIG.get('options')
 if not isinstance(options_config, dict):

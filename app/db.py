@@ -34,3 +34,61 @@ def save_user_to_db(
             print(f"Supabase upsert error: {response.error}")
     except Exception as e:  # noqa: BLE001
         print(f"Supabase save error: {e}")
+
+
+def get_admin_role(supabase: Client, user_id: int) -> str:
+    try:
+        response = (
+            supabase.table('users')
+            .select('admin_role')
+            .eq('user_id', user_id)
+            .limit(1)
+            .execute()
+        )
+        if getattr(response, 'data', None):
+            role = response.data[0].get('admin_role')
+            return str(role).strip().lower() if role else 'none'
+    except Exception as e:  # noqa: BLE001
+        print(f"Supabase admin role fetch error: {e}")
+    return 'none'
+
+
+def set_admin_role(supabase: Client, user_id: int, role: str) -> bool:
+    try:
+        response = supabase.table('users').upsert({
+            'user_id': user_id,
+            'admin_role': role,
+        }).execute()
+        if getattr(response, 'error', None):
+            print(f"Supabase admin role update error: {response.error}")
+            return False
+        return True
+    except Exception as e:  # noqa: BLE001
+        print(f"Supabase admin role update error: {e}")
+        return False
+
+
+def fetch_admins(supabase: Client) -> tuple[set[int], dict[int, set[int]]]:
+    master_ids: set[int] = set()
+    year_admins: dict[int, set[int]] = {}
+
+    try:
+        response = supabase.table('users').select('user_id,admin_role').execute()
+    except Exception as e:  # noqa: BLE001
+        print(f"Supabase admin list error: {e}")
+        return master_ids, year_admins
+
+    rows = response.data if getattr(response, 'data', None) else []
+    for row in rows:
+        user_id = row.get('user_id')
+        role = (row.get('admin_role') or 'none')
+        role_text = str(role).strip().lower()
+        if not user_id or role_text == 'none':
+            continue
+        if role_text == 'master':
+            master_ids.add(int(user_id))
+        elif role_text.isdigit():
+            year = int(role_text)
+            year_admins.setdefault(year, set()).add(int(user_id))
+
+    return master_ids, year_admins

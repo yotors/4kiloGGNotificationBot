@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from supabase import Client, create_client
 
 from app import config
+from app import db
 from app.handlers import register_handlers
 
 
@@ -44,6 +45,9 @@ def create_bot() -> telebot.TeleBot:
         types.BotCommand("year", "Send to a specific year"),
         types.BotCommand("lang", "Send to a specific language"),
         types.BotCommand("yearlang", "Send to year + language"),
+        types.BotCommand("adminadd", "Add a master or year admin"),
+        types.BotCommand("adminremove", "Remove a master or year admin"),
+        types.BotCommand("adminlist", "List current admins"),
     ]
 
     year_admin_commands = [
@@ -51,17 +55,18 @@ def create_bot() -> telebot.TeleBot:
         types.BotCommand("yearlang", "Send to year + language"),
     ]
 
+    master_admins, year_admins = db.fetch_admins(supabase)
     year_admin_ids = set()
-    for ids in config.YEAR_ADMINS.values():
+    for ids in year_admins.values():
         year_admin_ids.update(ids)
 
-    for admin_id in config.MASTER_ADMINS:
+    for admin_id in master_admins:
         try:
             bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(admin_id))
         except Exception as exc:  # noqa: BLE001
             print(f"Warning: Unable to set admin commands for {admin_id}: {exc}")
 
-    for admin_id in year_admin_ids.difference(config.MASTER_ADMINS):
+    for admin_id in year_admin_ids.difference(master_admins):
         try:
             bot.set_my_commands(year_admin_commands, scope=types.BotCommandScopeChat(admin_id))
         except Exception as exc:  # noqa: BLE001
