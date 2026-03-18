@@ -215,24 +215,34 @@ def register_handlers(bot, supabase) -> None:
             target_id = message.reply_to_message.from_user.id
         return target_id, parts
 
-    def send_bulk_message(message_text: str, filters: Optional[Dict[str, Any]] = None) -> None:
+    def send_bulk_message(message_text: str, filters: Optional[Dict[str, Any]] = None) -> int:
         if not message_text:
-            return
+            return 0
 
         try:
             students = db.fetch_users(supabase, filters)
+            if config.DEBUG:
+                print(
+                    f"DEBUG mode: using {config.USERS_TABLE} table, "
+                    f"filters={filters or {}}, "
+                    f"matched={len(students)}"
+                )
         except Exception as e:  # noqa: BLE001
             print(f"Supabase bulk fetch error: {e}")
-            return
+            return 0
 
+        sent_count = 0
         for student in students:
             user_id = student.get('user_id')
             name = student.get('name') or 'Student'
             try:
                 personalized_message = message_text.replace('{name}', str(name))
                 bot.send_message(user_id, personalized_message)
+                sent_count += 1
             except Exception as send_err:  # noqa: BLE001
                 print(f"Failed to send broadcast to {user_id}: {send_err}")
+
+        return sent_count
 
     @bot.message_handler(commands=['start'])
     def start_cmd(message: types.Message) -> None:
@@ -330,8 +340,14 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        send_bulk_message(announcement, filters)
-        bot.reply_to(message, "Broadcast sent to all registered students.")
+        sent_count = send_bulk_message(announcement, filters)
+        if config.DEBUG:
+            bot.reply_to(
+                message,
+                f"[DEBUG] Sent to {sent_count} users from demo database (after filters)."
+            )
+        else:
+            bot.reply_to(message, f"Broadcast sent to {sent_count} registered students.")
 
     @bot.message_handler(commands=['year'])
     def handle_notify_year(message: types.Message) -> None:
@@ -372,8 +388,14 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        send_bulk_message(announcement, filters)
-        bot.reply_to(message, f"Notification sent to year {year} students.")
+        sent_count = send_bulk_message(announcement, filters)
+        if config.DEBUG:
+            bot.reply_to(
+                message,
+                f"[DEBUG] Sent to {sent_count} users from demo database for year {year}."
+            )
+        else:
+            bot.reply_to(message, f"Notification sent to {sent_count} year {year} students.")
 
     @bot.message_handler(commands=['lang'])
     def handle_notify_language(message: types.Message) -> None:
@@ -408,8 +430,14 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        send_bulk_message(announcement, filters)
-        bot.reply_to(message, f"Notification sent to {language} users.")
+        sent_count = send_bulk_message(announcement, filters)
+        if config.DEBUG:
+            bot.reply_to(
+                message,
+                f"[DEBUG] Sent to {sent_count} users from demo database for language {language}."
+            )
+        else:
+            bot.reply_to(message, f"Notification sent to {sent_count} {language} users.")
 
     @bot.message_handler(commands=['yearlang'])
     def handle_notify_year_language(message: types.Message) -> None:
@@ -459,8 +487,14 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        send_bulk_message(announcement, filters)
-        bot.reply_to(message, f"Notification sent to year {year} ({language}).")
+        sent_count = send_bulk_message(announcement, filters)
+        if config.DEBUG:
+            bot.reply_to(
+                message,
+                f"[DEBUG] Sent to {sent_count} users from demo database for year {year} ({language})."
+            )
+        else:
+            bot.reply_to(message, f"Notification sent to {sent_count} year {year} ({language}) users.")
 
     @bot.message_handler(commands=['adminadd'])
     def handle_admin_add(message: types.Message) -> None:

@@ -1,9 +1,13 @@
 import json
 import os
 
+from dotenv import load_dotenv
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
 TRANSLATIONS_PATH = os.path.join(BASE_DIR, 'translations.json')
+
+load_dotenv()
 
 def _load_config_file() -> dict:
     try:
@@ -25,6 +29,18 @@ def _clean_str_list(values):
         if text:
             cleaned.append(text)
     return cleaned
+
+
+def _parse_bool_env(value: str | None) -> bool | None:
+    if value is None:
+        return None
+
+    cleaned = value.strip().lower()
+    if cleaned in {'1', 'true', 'yes', 'on'}:
+        return True
+    if cleaned in {'0', 'false', 'no', 'off'}:
+        return False
+    return None
 
 
 options_config = CONFIG.get('options')
@@ -55,6 +71,14 @@ if not processed_years:
 YEAR_CHOICES: tuple[int, ...] = tuple(processed_years)
 
 configured_default_language = str(options_config.get('default_language', '')).strip()
+
+debug_from_env = _parse_bool_env(os.getenv('DEBUG'))
+if debug_from_env is None:
+    DEBUG = bool(options_config.get('debug', False))
+else:
+    DEBUG = debug_from_env
+
+USERS_TABLE = 'demo_users' if DEBUG else 'users'
 
 try:
     with open(TRANSLATIONS_PATH, 'r', encoding='utf-8') as translations_file:

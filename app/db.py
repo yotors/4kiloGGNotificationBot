@@ -2,9 +2,11 @@ from typing import Any, Dict, Optional
 
 from supabase import Client
 
+from . import config
+
 
 def fetch_users(supabase: Client, filters: Optional[Dict[str, Any]] = None) -> list[dict[str, Any]]:
-    query = supabase.table('users').select('user_id,name')
+    query = supabase.table(config.USERS_TABLE).select('user_id,name')
     if filters:
         for key, value in filters.items():
             query = query.eq(key, value)
@@ -22,7 +24,7 @@ def save_user_to_db(
     preferred_language: str | None,
 ) -> None:
     try:
-        response = supabase.table('users').upsert({
+        response = supabase.table(config.USERS_TABLE).upsert({
             'user_id': user_id,
             'name': name,
             'gender': gender,
@@ -39,7 +41,7 @@ def save_user_to_db(
 def get_admin_role(supabase: Client, user_id: int) -> str:
     try:
         response = (
-            supabase.table('users')
+            supabase.table(config.USERS_TABLE)
             .select('admin_role')
             .eq('user_id', user_id)
             .limit(1)
@@ -55,7 +57,7 @@ def get_admin_role(supabase: Client, user_id: int) -> str:
 
 def set_admin_role(supabase: Client, user_id: int, role: str) -> bool:
     try:
-        response = supabase.table('users').upsert({
+        response = supabase.table(config.USERS_TABLE).upsert({
             'user_id': user_id,
             'admin_role': role,
         }).execute()
@@ -73,7 +75,7 @@ def fetch_admins(supabase: Client) -> tuple[set[int], dict[int, set[int]]]:
     year_admins: dict[int, set[int]] = {}
 
     try:
-        response = supabase.table('users').select('user_id,admin_role').execute()
+        response = supabase.table(config.USERS_TABLE).select('user_id,admin_role').execute()
     except Exception as e:  # noqa: BLE001
         print(f"Supabase admin list error: {e}")
         return master_ids, year_admins

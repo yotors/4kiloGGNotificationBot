@@ -3,6 +3,7 @@
     "default_language": "English",
     "genders": ["M", "F"],
     "years": [1, 2, 3, 4],
+    "debug": false,
     "departments": [
       "CS",
       "IS",

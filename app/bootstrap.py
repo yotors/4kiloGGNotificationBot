@@ -25,11 +25,14 @@ def create_bot() -> telebot.TeleBot:
 
     supabase: Client = create_client(supabase_url, supabase_service_role_key)
 
+    if config.DEBUG:
+        print(f"DEBUG mode enabled: broadcasts will use {config.USERS_TABLE} table")
+
     try:
-        supabase.table('users').select('user_id').limit(1).execute()
-        print("Supabase connection established")
+        supabase.table(config.USERS_TABLE).select('user_id').limit(1).execute()
+        print(f"Supabase connection established ({config.USERS_TABLE})")
     except Exception as e:  # noqa: BLE001
-        print("Warning: Unable to query 'users' table. Ensure it exists before running the bot.")
+        print(f"Warning: Unable to query '{config.USERS_TABLE}' table. Ensure it exists before running the bot.")
         print(f"Supabase error: {e}")
 
     bot = telebot.TeleBot(token)

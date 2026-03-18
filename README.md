@@ -6,7 +6,7 @@ A lightweight Telegram bot for 4Kilo Gibi Gubae to register students and send ta
 - Language-first onboarding with multilingual prompts
 - Collects `name`, `gender`, `department`, `year`, and `preferred_language`
 - Admin broadcast commands with optional filters: gender, department, year, language
-- Config-driven: `config.json` centralizes admin IDs and allowed options
+- Config-driven: `config.json` centralizes bot options
 
 ## Prerequisites
 - Python 3.10+
@@ -21,6 +21,13 @@ A lightweight Telegram bot for 4Kilo Gibi Gubae to register students and send ta
 2. Add `admin_role` to the Supabase `users` table (enum-like text values: `master`, `1`, `2`, `3`, `4`, `none`).
 3. Edit `config.json` to set options (`years`, `genders`, `departments`, `default_language`).
 4. Verify `translations.json` contains keys for the languages you want to support.
+
+## Debug Broadcast Mode
+- Enable safe broadcast testing using either:
+   - `.env` override: `DEBUG=true` (recommended for quick toggling), or
+   - `config.json`: `options.debug: true`
+- When `DEBUG=true`, the bot uses the `demo_users` table instead of `users` in the same database.
+- The bot logs `DEBUG mode enabled: broadcasts will use demo_users table` on startup.
 
 ## Install
 ```bash
