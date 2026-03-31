@@ -16,6 +16,16 @@ def extract_arguments(raw_text: str) -> str:
     return parts[1].strip() if len(parts) > 1 else ''
 
 
+def get_command_text(message: types.Message) -> str:
+    return (message.text or message.caption or '').strip()
+
+
+def get_photo_file_id(message: types.Message) -> Optional[str]:
+    if message.photo:
+        return message.photo[-1].file_id
+    return None
+
+
 def parse_language_command_args(raw_args: str) -> tuple[Optional[str], str]:
     """Parse language + message, supporting languages with spaces."""
     if not raw_args:
@@ -215,8 +225,12 @@ def register_handlers(bot, supabase) -> None:
             target_id = message.reply_to_message.from_user.id
         return target_id, parts
 
-    def send_bulk_message(message_text: str, filters: Optional[Dict[str, Any]] = None) -> int:
-        if not message_text:
+    def send_bulk_message(
+        message_text: str,
+        filters: Optional[Dict[str, Any]] = None,
+        photo_file_id: Optional[str] = None,
+    ) -> int:
+        if not message_text and not photo_file_id:
             return 0
 
         try:
@@ -237,7 +251,11 @@ def register_handlers(bot, supabase) -> None:
             name = student.get('name') or 'Student'
             try:
                 personalized_message = message_text.replace('{name}', str(name))
-                bot.send_message(user_id, personalized_message)
+                if photo_file_id:
+                    caption = personalized_message if message_text else None
+                    bot.send_photo(user_id, photo_file_id, caption=caption)
+                else:
+                    bot.send_message(user_id, personalized_message)
                 sent_count += 1
             except Exception as send_err:  # noqa: BLE001
                 print(f"Failed to send broadcast to {user_id}: {send_err}")
@@ -329,9 +347,11 @@ def register_handlers(bot, supabase) -> None:
             f"Usage: /all [<{gender_options_text}>] [<department>] <message>"
         )
 
-        args = extract_arguments(message.text)
+        raw_text = get_command_text(message)
+        args = extract_arguments(raw_text)
         gender, department, announcement = parse_optional_filters_prefix(args)
-        if not announcement:
+        photo_file_id = get_photo_file_id(message)
+        if not announcement and not photo_file_id:
             bot.reply_to(message, usage_text)
             return
 
@@ -340,11 +360,11 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        sent_count = send_bulk_message(announcement, filters)
+        sent_count = send_bulk_message(announcement, filters, photo_file_id)
         if config.DEBUG:
             bot.reply_to(
                 message,
-                f"[DEBUG] Sent to {sent_count} users from demo database (after filters)."
+                f"[DEBUG] Sent to {sent_count} users from {config.USERS_TABLE} (after filters)."
             )
         else:
             bot.reply_to(message, f"Broadcast sent to {sent_count} registered students.")
@@ -358,7 +378,8 @@ def register_handlers(bot, supabase) -> None:
             f"Usage: /year <{year_options_text}> [<{gender_options_text}>] [<department>] <message>"
         )
 
-        args = extract_arguments(message.text)
+        raw_text = get_command_text(message)
+        args = extract_arguments(raw_text)
         if not args:
             bot.reply_to(message, usage_text)
             return
@@ -379,7 +400,8 @@ def register_handlers(bot, supabase) -> None:
             return
 
         gender, department, announcement = parse_optional_filters_prefix(parts[1])
-        if not announcement:
+        photo_file_id = get_photo_file_id(message)
+        if not announcement and not photo_file_id:
             bot.reply_to(message, "Please provide a message after the year.")
             return
 
@@ -388,11 +410,11 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        sent_count = send_bulk_message(announcement, filters)
+        sent_count = send_bulk_message(announcement, filters, photo_file_id)
         if config.DEBUG:
             bot.reply_to(
                 message,
-                f"[DEBUG] Sent to {sent_count} users from demo database for year {year}."
+                f"[DEBUG] Sent to {sent_count} users from {config.USERS_TABLE} for year {year}."
             )
         else:
             bot.reply_to(message, f"Notification sent to {sent_count} year {year} students.")
@@ -408,7 +430,8 @@ def register_handlers(bot, supabase) -> None:
             f"Usage: /lang <{language_options_text}> [<{gender_options_text}>] [<department>] <message>"
         )
 
-        args = extract_arguments(message.text)
+        raw_text = get_command_text(message)
+        args = extract_arguments(raw_text)
         if not args:
             bot.reply_to(message, usage_text)
             return
@@ -420,8 +443,9 @@ def register_handlers(bot, supabase) -> None:
             return
 
         gender, department, announcement = parse_optional_filters_prefix(language_tail)
+        photo_file_id = get_photo_file_id(message)
 
-        if not announcement:
+        if not announcement and not photo_file_id:
             bot.reply_to(message, "Please provide a message after the language.")
             return
 
@@ -430,11 +454,11 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        sent_count = send_bulk_message(announcement, filters)
+        sent_count = send_bulk_message(announcement, filters, photo_file_id)
         if config.DEBUG:
             bot.reply_to(
                 message,
-                f"[DEBUG] Sent to {sent_count} users from demo database for language {language}."
+                f"[DEBUG] Sent to {sent_count} users from {config.USERS_TABLE} for language {language}."
             )
         else:
             bot.reply_to(message, f"Notification sent to {sent_count} {language} users.")
@@ -450,7 +474,8 @@ def register_handlers(bot, supabase) -> None:
             f"[<{gender_options_text}>] [<department>] <message>"
         )
 
-        args = extract_arguments(message.text)
+        raw_text = get_command_text(message)
+        args = extract_arguments(raw_text)
         if not args:
             bot.reply_to(message, usage_text)
             return
@@ -477,8 +502,9 @@ def register_handlers(bot, supabase) -> None:
             return
 
         gender, department, announcement = parse_optional_filters_prefix(language_tail)
+        photo_file_id = get_photo_file_id(message)
 
-        if not announcement:
+        if not announcement and not photo_file_id:
             bot.reply_to(message, "Please provide a message after the language.")
             return
 
@@ -487,14 +513,31 @@ def register_handlers(bot, supabase) -> None:
             filters['gender'] = gender
         if department:
             filters['department'] = department
-        sent_count = send_bulk_message(announcement, filters)
+        sent_count = send_bulk_message(announcement, filters, photo_file_id)
         if config.DEBUG:
             bot.reply_to(
                 message,
-                f"[DEBUG] Sent to {sent_count} users from demo database for year {year} ({language})."
+                f"[DEBUG] Sent to {sent_count} users from {config.USERS_TABLE} "
+                f"for year {year} ({language})."
             )
         else:
             bot.reply_to(message, f"Notification sent to {sent_count} year {year} ({language}) users.")
+
+    @bot.message_handler(content_types=['photo'])
+    def handle_photo_broadcast(message: types.Message) -> None:
+        caption = (message.caption or '').strip()
+        if not caption.startswith('/'):
+            return
+
+        command = caption.split()[0].lstrip('/').lower()
+        if command == 'all':
+            handle_broadcast(message)
+        elif command == 'year':
+            handle_notify_year(message)
+        elif command == 'lang':
+            handle_notify_language(message)
+        elif command == 'yearlang':
+            handle_notify_year_language(message)
 
     @bot.message_handler(commands=['adminadd'])
     def handle_admin_add(message: types.Message) -> None:

@@ -55,6 +55,7 @@ Notes:
 - Language names support spaces (example: "Afan Oromo").
 - Prefix filters (gender, department) are optional and order-insensitive.
 - Use `{name}` in the message body to personalize broadcasts.
+- You can send a photo with the command in the caption to broadcast an image with an optional caption.
 
 ## Admin Management
 - `/adminadd <user_id> master` — add a master admin (or reply to a user and omit `<user_id>`).
